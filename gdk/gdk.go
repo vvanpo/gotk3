@@ -24,6 +24,7 @@ import "C"
 import (
 	"errors"
 	"github.com/conformal/gotk3/glib"
+	"reflect"
 	"runtime"
 	"unsafe"
 )
@@ -55,7 +56,7 @@ var nilPtrErr = errors.New("cgo returned unexpected nil pointer")
  * Constants
  */
 
-// Colorspace is a representation of GDK's GdkPixbufAlphaMode.
+// Colorspace is a representation of GDK's GdkColorspace.
 type Colorspace int
 
 const (
@@ -466,10 +467,14 @@ func (v *Pixbuf) GetBitsPerSample() int {
 // GetPixels is a wrapper around gdk_pixbuf_get_pixels_with_length().
 // A Go slice is used to represent the underlying Pixbuf data array, one
 // byte per channel.
-func (v *Pixbuf) GetPixels() []byte {
+func (v *Pixbuf) GetPixels() (pixels []byte) {
 	var length C.guint
 	c := C.gdk_pixbuf_get_pixels_with_length(v.Native(), &length)
-	return C.GoBytes(unsafe.Pointer(c), (C.int)(length))
+	sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&pixels))
+	sliceHeader.Data = uintptr(unsafe.Pointer(c))
+	sliceHeader.Len = int(length)
+	sliceHeader.Cap = int(length)
+	return
 }
 
 // GetWidth is a wrapper around gdk_pixbuf_get_width().
@@ -506,6 +511,21 @@ func (v *Pixbuf) GetOption(key string) (value string, ok bool) {
 		return "", false
 	}
 	return C.GoString((*C.char)(c)), true
+}
+
+// PixbufNew is a wrapper around gdk_pixbuf_new().
+func PixbufNew(colorspace Colorspace, has_alpha bool, bits_per_sample int, width int, height int) (*Pixbuf, error) {
+    cs := C.GdkColorspace(colorspace)
+    ha := gbool(has_alpha)
+    c := C.gdk_pixbuf_new(cs, ha, C.int(bits_per_sample), C.int(width), C.int(height))
+    if c == nil {
+        return nil, nilPtrErr
+    }
+    obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
+    p := &Pixbuf{obj}
+    obj.Ref()
+    runtime.SetFinalizer(obj, (*glib.Object).Unref)
+    return p, nil
 }
 
 /*
