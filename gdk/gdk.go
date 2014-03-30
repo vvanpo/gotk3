@@ -26,6 +26,8 @@ import (
 	"github.com/conformal/gotk3/glib"
 	"runtime"
 	"unsafe"
+    "image"
+    "image/color"
 )
 
 /*
@@ -428,6 +430,42 @@ func (v *Event) free() {
 // Pixbuf is a representation of GDK's GdkPixbuf.
 type Pixbuf struct {
 	*glib.Object
+}
+
+// Required to implement the image.Image method set
+func (v *Pixbuf) ColorModel() color.Model {
+    return color.RGBAModel
+}
+
+// Required to implement the image.Image method set
+func (v *Pixbuf) Bounds() image.Rectangle {
+    return image.Rect(0, 0, v.GetWidth(), v.GetHeight())
+}
+
+// Required to implement the image.Image method set
+func (v *Pixbuf) At(x, y int) color.Color {
+    var c color.RGBA
+    width := v.GetWidth()
+    height := v.GetHeight()
+    alpha := v.GetHasAlpha()
+    stride := v.GetRowstride()
+    pixels := v.GetPixels()
+    offset := 3
+    if alpha {
+        offset = 4
+    }
+    if x < width && y < height {
+        i := (y * stride) + (x * offset)
+        c.R = pixels[i]
+        c.G = pixels[i + 1]
+        c.B = pixels[i + 2]
+        if alpha {
+            c.A = pixels[i + 3]
+        } else {
+            c.A = 0xff
+        }
+    }
+    return c
 }
 
 // Native returns a pointer to the underlying GdkPixbuf.
