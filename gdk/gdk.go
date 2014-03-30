@@ -445,7 +445,7 @@ func (v *Pixbuf) Bounds() image.Rectangle {
 
 // Required to implement the image.Image method set
 func (v *Pixbuf) At(x, y int) color.Color {
-    var c image.RGBA
+    var c color.RGBA
     width := v.GetWidth()
     height := v.GetHeight()
     alpha := v.GetHasAlpha()
